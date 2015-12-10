@@ -147,7 +147,8 @@ func ProcessRow(rowIterator *sql.Rows) *webhookproxy.Config {
 	webhook.ShowDebugInfo = true
 	webhook.TryLaterStatusCode = 503
 	webhook.BackQueueSize = 100
-	webhook.MaxWaitSeconds = 10 * time.Second
+	webhook.MaxWaitSeconds = 30 * time.Second
+	webhook.LongPollWait = 30 * time.Second
 	webhook.UseLongPoll = true
 	webhook.MaxPayloadSize = 5000000
 
