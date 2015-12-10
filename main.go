@@ -1,5 +1,6 @@
 package main
 
+import "net"
 import "net/http"
 import "github.com/gorilla/mux"
 import "fmt"
@@ -10,6 +11,8 @@ import "strconv"
 import "log"
 
 func main() {
+
+	log.Print("Reading environment variables")
 
 	postgresUser := os.Getenv("POSTGRES_USER")
 	postgresPassword := os.Getenv("POSTGRES_PASSWORD")
@@ -46,6 +49,7 @@ func main() {
 	mutex := sync.Mutex{}
 
 	db.ForAll(func(config *webhookproxy.Config) {
+		log.Printf("Setting up %s\n", config.Hostname)
 		hostnameHandlerMap[config.Hostname] = webhookproxy.BuildHandlers(config)
 		hostnameConfigMap[config.Hostname] = config
 	})
@@ -74,10 +78,16 @@ func main() {
 
 	mapPath := func(action string, handlerLookup func(*webhookproxy.WebHookHandlers) func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 		return func(w http.ResponseWriter, req *http.Request) {
+
+			hostname, _, err := net.SplitHostPort(req.Host)
+			if err != nil {
+				w.WriteHeader(400)
+				return
+			}
+			log.Printf("Recieved a %s request for %s on %s", req.Method, req.Host, req.URL)
+
 			vars := mux.Vars(req)
 			secret := vars["secret"]
-			hostname := req.Host
-
 			if len(secret) == 0 {
 				w.WriteHeader(400)
 				fmt.Fprint(w, "Secret required e.g. https://"+hostname+"/"+action+"/secret\n")
@@ -97,6 +107,8 @@ func main() {
 
 			if secret == configMap.Secret {
 				handlerLookup(handlers)(w, req)
+			} else {
+				w.WriteHeader(404)
 			}
 		}
 	}
@@ -113,6 +125,11 @@ func main() {
 		return handlers.ReplyHandler
 	}))
 
-	fmt.Printf("Starting webhookproxy server on port %d", port)
-	http.ListenAndServe(":"+strconv.Itoa(port), r)
+	log.Printf("Starting webhookproxy server on port %d\n", port)
+
+	err = http.ListenAndServe(":"+strconv.Itoa(port), r)
+
+	if err != nil {
+		log.Fatalf("Unable to start server %s", err)
+	}
 }

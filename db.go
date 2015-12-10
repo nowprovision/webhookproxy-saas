@@ -97,7 +97,6 @@ func (db *Database) OnDelete(fn func(*webhookproxy.Config)) {
 
 func ProcessUpdates(db *Database, listener *pq.Listener) {
 	for {
-		fmt.Println("Waiting for update message")
 		message := <-listener.Notify
 		id := message.Extra
 		Reread(db, id)
@@ -144,6 +143,7 @@ func ProcessRow(rowIterator *sql.Rows) *webhookproxy.Config {
 	webhook.Secret = dbWebHook.Secret
 	webhook.Hostname = dbWebHook.Subdomain + ".webhookproxy.com"
 
+	webhook.Id = id
 	webhook.ShowDebugInfo = true
 	webhook.TryLaterStatusCode = 503
 	webhook.BackQueueSize = 100
