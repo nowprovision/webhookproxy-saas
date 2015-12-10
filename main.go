@@ -14,6 +14,10 @@ func main() {
 
 	log.Print("Reading environment variables")
 
+	if len(os.Getenv("SITE_DOMAIN")) == 0 {
+		log.Fatal("Unable to parse SITE_DOMAIN env variable")
+	}
+
 	postgresUser := os.Getenv("POSTGRES_USER")
 	postgresPassword := os.Getenv("POSTGRES_PASSWORD")
 	postgresDbName := os.Getenv("POSTGRES_DBNAME")

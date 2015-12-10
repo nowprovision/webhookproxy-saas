@@ -1,6 +1,6 @@
 package main
 
-import "fmt"
+import "os"
 import "net"
 import "time"
 import "log"
@@ -38,7 +38,7 @@ func NewDatabase(connString string) *Database {
 	db, err := sql.Open("postgres", connString)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Unable to connect to db %s", err)
 	}
 
 	emptyState := make(map[string]*webhookproxy.Config)
@@ -51,7 +51,7 @@ func (db *Database) Load() {
 	rowIterator, err := db.conn.Query("SELECT id, blob FROM webhooks")
 
 	if err != nil {
-		return
+		log.Fatalf("Unable to query webhooks table. %s", err)
 	}
 
 	for rowIterator.Next() {
@@ -76,12 +76,13 @@ func (db *Database) StartUpdateDeleteListeners() {
 
 	reportProblem := func(ev pq.ListenerEventType, err error) {
 		if err != nil {
-			fmt.Println(err.Error())
+			log.Fatalf("Listener error. %s", err)
 		}
 	}
+
 	updateListener := pq.NewListener(db.connString,
-		time.Second*1,
-		time.Second*1,
+		time.Second*10,
+		time.Second*10,
 		reportProblem)
 	updateListener.Listen("updated")
 
@@ -99,7 +100,9 @@ func ProcessUpdates(db *Database, listener *pq.Listener) {
 	for {
 		message := <-listener.Notify
 		id := message.Extra
+		log.Printf("Updating webhook ", id)
 		Reread(db, id)
+		log.Printf("Updated webhook ", id)
 	}
 }
 
@@ -141,7 +144,10 @@ func ProcessRow(rowIterator *sql.Rows) *webhookproxy.Config {
 
 	webhook.FilteringEnabled = dbWebHook.FilteringEnabled
 	webhook.Secret = dbWebHook.Secret
-	webhook.Hostname = dbWebHook.Subdomain + ".webhookproxy.com"
+
+	suffix := "." + os.Getenv("SITE_DOMAIN")
+
+	webhook.Hostname = dbWebHook.Subdomain + suffix
 
 	webhook.Id = id
 	webhook.ShowDebugInfo = true
