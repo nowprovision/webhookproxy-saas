@@ -21,6 +21,8 @@ func main() {
 	postgresUser := os.Getenv("POSTGRES_USER")
 	postgresPassword := os.Getenv("POSTGRES_PASSWORD")
 	postgresDbName := os.Getenv("POSTGRES_DBNAME")
+	postgresHost := os.Getenv("POSTGRES_HOST")
+	postgresPort := os.Getenv("POSTGRES_PORT")
 
 	if len(postgresUser) == 0 {
 		log.Fatal("Unable to parse POSTGRES_USER env variable")
@@ -34,6 +36,14 @@ func main() {
 		log.Fatal("Unable to parse POSTGRES_DBNAME env variable")
 	}
 
+	if len(postgresHost) == 0 {
+		log.Fatal("Unable to parse POSTGRES_HOST env variable")
+	}
+
+	if len(postgresPort) == 0 {
+		log.Fatal("Unable to parse POSTGRES_PORT env variable")
+	}
+
 	bindingPort := os.Getenv("PORT")
 	port, err := strconv.Atoi(bindingPort)
 
@@ -43,7 +53,9 @@ func main() {
 
 	connString := "user=" + postgresUser + " " +
 		"password=" + postgresPassword + " " +
-		"dbname=" + postgresDbName
+		"dbname=" + postgresDbName + " " +
+		"host=" + postgresHost + " " +
+		"port=" + postgresPort
 
 	db := NewDatabase(connString)
 	db.Load()
