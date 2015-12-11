@@ -1,5 +1,6 @@
 package main
 
+import "strings"
 import "net"
 import "net/http"
 import "github.com/gorilla/mux"
@@ -105,11 +106,15 @@ func main() {
 	mapPath := func(action string, handlerLookup func(*webhookproxy.WebHookHandlers) func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 		return func(w http.ResponseWriter, req *http.Request) {
 
-			hostname, _, err := net.SplitHostPort(req.Host)
-			if err != nil {
-				w.WriteHeader(400)
-				return
+			hostname := req.Host
+			if strings.Contains(req.Host, ":") {
+				hostname, _, err = net.SplitHostPort(req.Host)
+				if err != nil {
+					w.WriteHeader(400)
+					return
+				}
 			}
+
 			log.Printf("Recieved a %s request for %s on %s", req.Method, req.Host, req.URL)
 
 			vars := mux.Vars(req)
