@@ -120,8 +120,8 @@ func ProcessUpdates(db *Database, listener *pq.Listener) {
 	for {
 		message := <-listener.Notify
 		id := message.Extra
-		log.Printf("Updating webhook ", id)
-		stmt, err := db.conn.Prepare("SELECT id, blob FROM webhooks WHERE id = ?")
+		log.Printf("Updating webhook %s", id)
+		stmt, err := db.conn.Prepare("SELECT id, blob FROM webhooks WHERE id = $1")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -139,7 +139,7 @@ func ProcessUpdates(db *Database, listener *pq.Listener) {
 			db.state[id] = newConfig
 			db.mutex.Unlock()
 		}
-		log.Printf("Updated webhook ", id)
+		log.Printf("Updated webhook %s", id)
 	}
 }
 
@@ -147,8 +147,8 @@ func ProcessAdditions(db *Database, listener *pq.Listener) {
 	for {
 		message := <-listener.Notify
 		id := message.Extra
-		log.Printf("Adding webhook ", id)
-		stmt, err := db.conn.Prepare("SELECT id, blob FROM webhooks WHERE id = ?")
+		log.Printf("Adding webhook %s", id)
+		stmt, err := db.conn.Prepare("SELECT id, blob FROM webhooks WHERE id = $1")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -165,7 +165,7 @@ func ProcessAdditions(db *Database, listener *pq.Listener) {
 			db.state[id] = newConfig
 			db.mutex.Unlock()
 		}
-		log.Printf("Added webhook ", id)
+		log.Printf("Added webhook %s", id)
 	}
 }
 
@@ -173,11 +173,11 @@ func ProcessRemovals(db *Database, listener *pq.Listener) {
 	for {
 		message := <-listener.Notify
 		id := message.Extra
-		log.Printf("Removing webhook ", id)
+		log.Printf("Removing webhook %s", id)
 		db.mutex.Lock()
 		delete(db.state, id)
 		db.mutex.Unlock()
-		log.Printf("Removed webhook ", id)
+		log.Printf("Removed webhook %s", id)
 	}
 }
 
