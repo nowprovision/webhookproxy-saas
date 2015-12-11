@@ -11,12 +11,13 @@ import "github.com/lib/pq"
 import "encoding/json"
 
 type Database struct {
-	conn          *sql.DB
-	connString    string
-	state         map[string]*webhookproxy.Config
-	mutex         sync.Mutex
-	changeHandler func(*webhookproxy.Config, *webhookproxy.Config)
-	deleteHandler func(*webhookproxy.Config)
+	conn            *sql.DB
+	connString      string
+	state           map[string]*webhookproxy.Config
+	mutex           sync.Mutex
+	changeHandler   func(*webhookproxy.Config, *webhookproxy.Config)
+	deleteHandler   func(*webhookproxy.Config)
+	additionHandler func(*webhookproxy.Config)
 }
 
 type DBWebHook struct {
@@ -43,7 +44,7 @@ func NewDatabase(connString string) *Database {
 
 	emptyState := make(map[string]*webhookproxy.Config)
 
-	return &Database{db, connString, emptyState, sync.Mutex{}, nil, nil}
+	return &Database{db, connString, emptyState, sync.Mutex{}, nil, nil, nil}
 }
 
 func (db *Database) Load() {
@@ -87,6 +88,22 @@ func (db *Database) StartUpdateDeleteListeners() {
 	updateListener.Listen("updated")
 
 	go ProcessUpdates(db, updateListener)
+
+	additionListener := pq.NewListener(db.connString,
+		time.Second*10,
+		time.Second*10,
+		reportProblem)
+	additionListener.Listen("added")
+
+	go ProcessAdditions(db, additionListener)
+
+	removeListener := pq.NewListener(db.connString,
+		time.Second*10,
+		time.Second*10,
+		reportProblem)
+	removeListener.Listen("removed")
+
+	go ProcessRemovals(db, removeListener)
 }
 
 func (db *Database) OnChange(fn func(*webhookproxy.Config, *webhookproxy.Config)) {
@@ -95,35 +112,72 @@ func (db *Database) OnChange(fn func(*webhookproxy.Config, *webhookproxy.Config)
 func (db *Database) OnDelete(fn func(*webhookproxy.Config)) {
 	db.deleteHandler = fn
 }
+func (db *Database) OnAddition(fn func(*webhookproxy.Config)) {
+	db.additionHandler = fn
+}
 
 func ProcessUpdates(db *Database, listener *pq.Listener) {
 	for {
 		message := <-listener.Notify
 		id := message.Extra
 		log.Printf("Updating webhook ", id)
-		Reread(db, id)
+		stmt, err := db.conn.Prepare("SELECT id, blob FROM webhooks WHERE id = ?")
+		if err != nil {
+			log.Fatal(err)
+		}
+		rowIterator, err := stmt.Query(id)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for rowIterator.Next() {
+			oldConfig := db.state[id]
+			newConfig := ProcessRow(rowIterator)
+			if db.changeHandler != nil {
+				db.changeHandler(oldConfig, newConfig)
+			}
+			db.mutex.Lock()
+			db.state[id] = newConfig
+			db.mutex.Unlock()
+		}
 		log.Printf("Updated webhook ", id)
 	}
 }
 
-func Reread(db *Database, id string) {
-	stmt, err := db.conn.Prepare("SELECT id, blob FROM webhooks WHERE id = ?")
-	if err != nil {
-		log.Fatal(err)
-	}
-	rowIterator, err := stmt.Query(id)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for rowIterator.Next() {
-		oldConfig := db.state[id]
-		newConfig := ProcessRow(rowIterator)
-		if db.changeHandler != nil {
-			db.changeHandler(oldConfig, newConfig)
+func ProcessAdditions(db *Database, listener *pq.Listener) {
+	for {
+		message := <-listener.Notify
+		id := message.Extra
+		log.Printf("Adding webhook ", id)
+		stmt, err := db.conn.Prepare("SELECT id, blob FROM webhooks WHERE id = ?")
+		if err != nil {
+			log.Fatal(err)
 		}
+		rowIterator, err := stmt.Query(id)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for rowIterator.Next() {
+			newConfig := ProcessRow(rowIterator)
+			if db.additionHandler != nil {
+				db.additionHandler(newConfig)
+			}
+			db.mutex.Lock()
+			db.state[id] = newConfig
+			db.mutex.Unlock()
+		}
+		log.Printf("Added webhook ", id)
+	}
+}
+
+func ProcessRemovals(db *Database, listener *pq.Listener) {
+	for {
+		message := <-listener.Notify
+		id := message.Extra
+		log.Printf("Removing webhook ", id)
 		db.mutex.Lock()
-		db.state[id] = newConfig
+		delete(db.state, id)
 		db.mutex.Unlock()
+		log.Printf("Removed webhook ", id)
 	}
 }
 

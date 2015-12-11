@@ -78,6 +78,14 @@ func main() {
 		mutex.Unlock()
 	})
 
+	db.OnAddition(func(config *webhookproxy.Config) {
+		log.Printf("Setting up %s\n", config.Hostname)
+		mutex.Lock()
+		hostnameHandlerMap[config.Hostname] = webhookproxy.BuildHandlers(config)
+		hostnameConfigMap[config.Hostname] = config
+		mutex.Unlock()
+	})
+
 	r := mux.NewRouter()
 
 	mapPath := func(action string, handlerLookup func(*webhookproxy.WebHookHandlers) func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
