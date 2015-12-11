@@ -61,7 +61,7 @@ func main() {
 	db.StartUpdateDeleteListeners()
 
 	db.OnChange(func(oldConfig *webhookproxy.Config, newConfig *webhookproxy.Config) {
-		log.Printf("Chaning  %s\n", oldConfig.Hostname)
+		log.Printf("Changing  %s\n", oldConfig.Hostname)
 		mutex.Lock()
 		if oldConfig.Hostname != newConfig.Hostname {
 			delete(hostnameHandlerMap, oldConfig.Hostname)
