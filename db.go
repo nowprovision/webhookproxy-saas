@@ -31,6 +31,7 @@ type DBWebHook struct {
 type DBFilter struct {
 	Id          string
 	Description string
+	Type        string
 	IP          string
 }
 
@@ -214,6 +215,9 @@ func ProcessRow(rowIterator *sql.Rows) *webhookproxy.Config {
 
 	webhookFilters := make([]*net.IPNet, 0)
 	for _, filter := range dbWebHook.Filters {
+		if filter.Type != "webhook" {
+			continue
+		}
 		_, ipnet, err := net.ParseCIDR(filter.IP + "/32") //for time being support single ip
 		if err != nil {
 			log.Printf("Skipping filter: %s for %s", filter.IP, "id")
@@ -226,6 +230,9 @@ func ProcessRow(rowIterator *sql.Rows) *webhookproxy.Config {
 
 	pollReplyFilters := make([]*net.IPNet, 0)
 	for _, filter := range dbWebHook.Filters {
+		if filter.Type != "pollreply" {
+			continue
+		}
 		_, ipnet, err := net.ParseCIDR(filter.IP + "/32") //for time being support single ip
 		if err != nil {
 			log.Printf("Skipping filter: %s for %s", filter.IP, "id")
