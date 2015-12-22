@@ -176,8 +176,14 @@ func ProcessRemovals(db *Database, listener *pq.Listener) {
 		id := message.Extra
 		log.Printf("Removing webhook %s", id)
 		db.mutex.Lock()
-		delete(db.state, id)
+		oldConfig := db.state[id]
+		if oldConfig != nil {
+			delete(db.state, id)
+		}
 		db.mutex.Unlock()
+		if oldConfig != nil && db.deleteHandler != nil {
+			db.deleteHandler(oldConfig)
+		}
 		log.Printf("Removed webhook %s", id)
 	}
 }
