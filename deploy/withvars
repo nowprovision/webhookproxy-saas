@@ -1,0 +1,4 @@
+#!/bin/bash
+
+eval `cat $1 | sed -e 's/^/export /'`
+exec ${@:2}
