@@ -212,7 +212,7 @@ func ProcessRow(rowIterator *sql.Rows) *webhookproxy.Config {
 	webhook.Hostname = dbWebHook.Subdomain + suffix
 
 	webhook.Id = id
-	webhook.AutoReply = dbWebHook.Autoreply
+	webhook.Autoreply = dbWebHook.Autoreply
 	webhook.ShowDebugInfo = true
 	webhook.TryLaterStatusCode = 503
 	webhook.BackQueueSize = 100
