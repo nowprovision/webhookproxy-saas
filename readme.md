@@ -1,5 +1,7 @@
 # WebHookProxy Saas
 
+- No longer maintained
+
 ## Introduction
 
 This is the SaaS multi-tenant bootstrapper for the core [webhookproxy](http://www.github.com/nowprovision/webhookproxy) backend library.
@@ -22,8 +24,3 @@ PR welcomes, contributions will be noted
 ## License
 
 MIT
-
-## Author
-
-Matt Freeman - [@nowprovision](http://www.twitter.com/nowprovision)
-
