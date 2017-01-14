@@ -19,8 +19,6 @@ Following 12factor principles, environment variables configure the application, 
 
 A lot of stuff isn't optimal, I am well aware. Minimal viable product. 
 
-PR welcomes, contributions will be noted
-
 ## License
 
 MIT
